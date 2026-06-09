@@ -62,6 +62,13 @@ export default defineNuxtConfig({
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'theme-color', content: '#1e293b' },
+      ],
+      // Inject the manifest link into SSR HTML so PWA detection doesn't depend on client
+      // JS running (e.g. Cloudflare Rocket Loader can break the module's runtime injection).
+      link: [
+        { rel: 'manifest', href: '/manifest.webmanifest' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon-180x180.png' },
       ],
     },
   },

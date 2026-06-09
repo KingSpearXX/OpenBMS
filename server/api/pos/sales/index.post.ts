@@ -1,5 +1,5 @@
 import { directusUser } from '../../../utils/directus-user'
-import { computeAmount, mapSale, shopSalesHasProduct } from '../../../utils/pos'
+import { computeAmount, mapSale, posStockDelta, shopSalesHasProduct } from '../../../utils/pos'
 
 interface SaleBody {
   product_name?: string | null
@@ -27,10 +27,18 @@ export default defineEventHandler(async (event) => {
     // sold_at is the editable sale time (a wall-clock dateTime); client always sends it.
     sold_at: body.sold_at ?? null,
   }
-  if (body.product != null && (await shopSalesHasProduct(event))) {
+  const linkProduct = body.product != null && (await shopSalesHasProduct(event))
+  if (linkProduct) {
     row.product = body.product
   }
 
   const created = await directusUser<Record<string, unknown>>(event, '/items/shop_sales', { method: 'POST', body: row })
+
+  // Auto-deduct the linked stock item (1:1 with qty, negative allowed). Gated on the FK
+  // being stored so create/edit/delete stay symmetric (edit/delete read it back).
+  if (linkProduct) {
+    await posStockDelta(event, body.product, -(Number(body.quantity) || 1))
+  }
+
   return { item: mapSale(created) }
 })

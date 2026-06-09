@@ -26,6 +26,13 @@ async function setStock(event: H3Event, itemId: number, value: number): Promise<
   })
 }
 
+// Relative stock change (delta < 0 deducts). Always allows negative — used by POS, where a
+// sale should never be blocked at the counter. Best-effort read-modify-write.
+export async function adjustStock(event: H3Event, itemId: number, delta: number): Promise<void> {
+  const stock = await readStock(event, itemId)
+  await setStock(event, itemId, stock + delta)
+}
+
 function guardNegative(next: number, stock: number, used: number, allowNegative?: boolean) {
   if (next < 0 && !allowNegative) {
     throw createError({

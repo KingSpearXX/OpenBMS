@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { directusUser } from './directus-user'
+import { adjustStock } from './inventory'
 
 // POS sales are stored in `shop_sales` (unified with the existing sales analysis). The BFF
 // maps app field names ↔ shop_sales columns:
@@ -44,6 +45,41 @@ async function collectionFields(event: H3Event, collection: string): Promise<Set
 
 export async function shopSalesHasProduct(event: H3Event): Promise<boolean> {
   return (await collectionFields(event, 'shop_sales')).has('product')
+}
+
+// Resolve a product's linked stock item (products.inventory_id → media_inventory).
+async function productStockItem(event: H3Event, productId: number): Promise<number | null> {
+  try {
+    const p = await directusUser<{ inventory_id: number | { id: number } | null }>(
+      event,
+      `/items/products/${productId}`,
+      { query: { fields: 'inventory_id' } },
+    )
+    const inv = p?.inventory_id
+    if (inv == null) return null
+    return typeof inv === 'object' ? (inv as { id: number }).id : Number(inv)
+  }
+  catch {
+    return null
+  }
+}
+
+// Apply a stock change for a POS sale of `productId`: `delta` is added to the linked stock
+// item's on-hand (negative deducts, positive restores). 1:1 with sold quantity (no unit
+// conversion), negative allowed. Best-effort — a sale must never be blocked by stock.
+export async function posStockDelta(
+  event: H3Event,
+  productId: number | null | undefined,
+  delta: number,
+): Promise<void> {
+  if (productId == null || !Number.isFinite(delta) || delta === 0) return
+  try {
+    const itemId = await productStockItem(event, Number(productId))
+    if (itemId != null) await adjustStock(event, itemId, delta)
+  }
+  catch {
+    /* best-effort: never block the sale on a stock-movement failure */
+  }
 }
 
 // Map a raw shop_sales row to the app's PosSale shape.
