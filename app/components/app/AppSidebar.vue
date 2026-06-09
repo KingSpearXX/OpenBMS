@@ -12,6 +12,7 @@ const nav = [
   { label: 'Customers', icon: 'pi pi-users', to: '/customers' },
   { label: 'Point of Sale', icon: 'pi pi-shopping-bag', to: '/pos' },
   { label: 'Sales history', icon: 'pi pi-receipt', to: '/pos/history' },
+  { label: 'Expenses', icon: 'pi pi-wallet', to: '/expenses' },
   { label: 'Security', icon: 'pi pi-shield', to: '/settings/security' },
 ]
 </script>
