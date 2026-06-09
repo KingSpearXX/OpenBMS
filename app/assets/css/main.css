@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens (the `:root` variables) are injected from app/lib/theme/tokens.ts
+   via the theme plugin — the single source of truth. */
+
+html,
+body,
+#__nuxt {
+  height: 100%;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--app-bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
