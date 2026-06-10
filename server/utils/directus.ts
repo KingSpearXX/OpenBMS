@@ -35,6 +35,17 @@ export async function directusLogout(event: H3Event, refreshToken: string): Prom
   })
 }
 
+/**
+ * True when the error is a definitive Directus auth rejection (invalid/expired/revoked
+ * credentials), as opposed to a transient failure (network error, Directus 5xx) that
+ * must not destroy the session.
+ */
+export function isDirectusAuthRejection(error: unknown): boolean {
+  const e = error as { statusCode?: number, response?: { status?: number } } | null
+  const status = e?.statusCode ?? e?.response?.status
+  return status === 400 || status === 401 || status === 403
+}
+
 export async function directusMe(event: H3Event, accessToken: string): Promise<unknown> {
   const res = await $fetch<{ data: unknown }>(`${getDirectusUrl(event)}/users/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },

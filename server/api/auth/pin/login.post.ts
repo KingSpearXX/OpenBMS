@@ -1,6 +1,7 @@
-import { directusMe, directusRefresh } from '../../../utils/directus'
-import { setAuthSession } from '../../../utils/session'
-import { refreshPinToken, verifyPin } from '../../../utils/pin'
+import type { SessionData } from '../../../utils/session'
+import { directusMe, directusRefresh, isDirectusAuthRejection } from '../../../utils/directus'
+import { getAccessTokenFromSession, getAuthSession, setAuthSession } from '../../../utils/session'
+import { clearPin, refreshPinToken, verifyPin } from '../../../utils/pin'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ pin?: string }>(event)
@@ -18,11 +19,34 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: `Incorrect PIN${suffix}` })
   }
 
+  // Preferred path: a (locked) session cookie still holds its tokens — unlock it in
+  // place. No single-use-token resurrection involved, so rotation can't break unlock.
+  const session = getAuthSession(event)
+  if (session) {
+    const unlocked: SessionData = { ...session, locked: false }
+    setAuthSession(event, unlocked)
+    const accessToken = await getAccessTokenFromSession(event, unlocked)
+    if (accessToken) {
+      const user = await directusMe(event, accessToken)
+      return { user }
+    }
+    // Session chain definitively rejected (cookie already cleared) — fall back to the
+    // refresh token stored in the PIN cookie.
+  }
+
+  // Fallback (e.g. browser restarted and a non-remember session cookie evaporated):
+  // start a new token chain from the refresh token sealed in the PIN cookie.
   let tokens
   try {
     tokens = await directusRefresh(event, result.refreshToken)
   }
-  catch {
+  catch (error) {
+    if (!isDirectusAuthRejection(error)) {
+      throw createError({ statusCode: 503, statusMessage: 'Sign-in service is unreachable. Please try again.' })
+    }
+    // The stored token is dead (expired/consumed/revoked) — this PIN can never succeed
+    // again, so forget it rather than letting retries burn through the attempt limit.
+    clearPin(event)
     throw createError({ statusCode: 401, statusMessage: 'Session expired. Please sign in with your password.' })
   }
 

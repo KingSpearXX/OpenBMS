@@ -14,8 +14,12 @@ export function useAuth() {
       const res = await request<{ user: User }>('/api/auth/me')
       user.value = res.user
     }
-    catch {
-      user.value = null
+    catch (error) {
+      // Only a definitive auth rejection means signed-out; a transient failure
+      // (e.g. Directus briefly unreachable, 503) keeps whatever state we had.
+      const e = error as { statusCode?: number, status?: number } | null
+      const status = e?.statusCode ?? e?.status
+      if (status === 401 || status === 403) user.value = null
     }
   }
 

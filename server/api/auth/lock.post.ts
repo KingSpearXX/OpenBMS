@@ -1,9 +1,13 @@
-import { clearAuthSession } from '../../utils/session'
+import { getAuthSession, setAuthSession } from '../../utils/session'
 
 export default defineEventHandler((event) => {
-  // Lock = drop the active session but KEEP the device PIN (and the Directus refresh
-  // token it holds) so the user can unlock quickly via the PIN screen. No Directus revoke.
+  // Lock = keep the session's tokens sealed in the cookie but flag it locked; data access
+  // is refused until a PIN unlock flips the flag back. Nothing is revoked or dropped, so
+  // unlocking never depends on resurrecting a single-use refresh token.
   // (Full sign-out is /api/auth/logout, which revokes and clears the PIN.)
-  clearAuthSession(event)
+  const session = getAuthSession(event)
+  if (session) {
+    setAuthSession(event, { ...session, locked: true })
+  }
   return { success: true }
 })

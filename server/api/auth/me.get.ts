@@ -1,4 +1,4 @@
-import { directusMe } from '../../utils/directus'
+import { directusMe, isDirectusAuthRejection } from '../../utils/directus'
 import { clearAuthSession, getAccessToken } from '../../utils/session'
 
 export default defineEventHandler(async (event) => {
@@ -11,8 +11,12 @@ export default defineEventHandler(async (event) => {
     const user = await directusMe(event, accessToken)
     return { user }
   }
-  catch {
-    clearAuthSession(event)
-    throw createError({ statusCode: 401, statusMessage: 'Not authenticated' })
+  catch (error) {
+    if (isDirectusAuthRejection(error)) {
+      clearAuthSession(event)
+      throw createError({ statusCode: 401, statusMessage: 'Not authenticated' })
+    }
+    // Transient Directus failure: keep the session cookie so the next attempt can retry.
+    throw createError({ statusCode: 503, statusMessage: 'Sign-in service is unreachable. Please try again.' })
   }
 })

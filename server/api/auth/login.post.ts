@@ -1,5 +1,6 @@
 import { directusLogin, directusMe } from '../../utils/directus'
 import { setAuthSession } from '../../utils/session'
+import { refreshPinToken } from '../../utils/pin'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ email?: string, password?: string, remember?: boolean }>(event)
@@ -25,6 +26,9 @@ export default defineEventHandler(async (event) => {
     expiresAt: Date.now() + tokens.expires,
     remember: Boolean(body?.remember),
   })
+  // Re-point an existing device PIN at the new session's token chain so a later PIN
+  // unlock doesn't depend on the old (expiring) chain.
+  refreshPinToken(event, tokens.refresh_token)
 
   const user = await directusMe(event, tokens.access_token)
   return { user }
