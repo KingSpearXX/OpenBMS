@@ -13,6 +13,8 @@ const nav = [
   { label: 'Point of Sale', icon: 'pi pi-shopping-bag', to: '/pos' },
   { label: 'Sales history', icon: 'pi pi-receipt', to: '/pos/history' },
   { label: 'Expenses', icon: 'pi pi-wallet', to: '/expenses' },
+  { label: 'Cash Ledger', icon: 'pi pi-book', to: '/ledger' },
+  { label: 'Procurement', icon: 'pi pi-truck', to: '/procurement' },
   { label: 'Security', icon: 'pi pi-shield', to: '/settings/security' },
 ]
 </script>

@@ -5,9 +5,10 @@ interface ExpenseBody {
   expense_category?: string | null
   expense_description?: string | null
   expense_attachment?: string | null
+  branch?: string | null
 }
 
-const FIELDS: (keyof ExpenseBody)[] = ['expense_amount', 'expense_category', 'expense_description', 'expense_attachment']
+const FIELDS: (keyof ExpenseBody)[] = ['expense_amount', 'expense_category', 'expense_description', 'expense_attachment', 'branch']
 
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')

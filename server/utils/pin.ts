@@ -21,18 +21,21 @@ interface PinPayload {
   hash: string
 }
 
-function secureCookies(): boolean {
-  return !import.meta.dev
+function secureCookies(event: H3Event): boolean {
+  if (import.meta.dev) return false
+  const forwarded = getHeader(event, 'x-forwarded-proto')
+  if (forwarded) return forwarded.split(',')[0]!.trim() === 'https'
+  return getRequestURL(event).protocol === 'https:'
 }
 
 function pinSecret(event: H3Event): string {
   return useRuntimeConfig(event).pinSecret
 }
 
-function baseCookieOptions() {
+function baseCookieOptions(event: H3Event) {
   return {
     httpOnly: true,
-    secure: secureCookies(),
+    secure: secureCookies(event),
     sameSite: 'lax' as const,
     path: '/',
     maxAge: PIN_MAX_AGE,
@@ -45,7 +48,7 @@ function hashPin(pin: string, secret: string, salt: Buffer): Buffer {
 }
 
 function sealPayload(event: H3Event, payload: PinPayload): void {
-  setCookie(event, PIN_COOKIE, encryptJson(payload, pinSecret(event)), baseCookieOptions())
+  setCookie(event, PIN_COOKIE, encryptJson(payload, pinSecret(event)), baseCookieOptions(event))
 }
 
 function readPayload(event: H3Event): PinPayload | null {
@@ -58,7 +61,7 @@ export function setPin(event: H3Event, refreshToken: string, pin: string): void 
   const salt = randomBytes(16)
   const hash = hashPin(pin, pinSecret(event), salt)
   sealPayload(event, { refreshToken, salt: salt.toString('hex'), hash: hash.toString('hex') })
-  setCookie(event, PIN_ENABLED_COOKIE, '1', { ...baseCookieOptions(), httpOnly: false })
+  setCookie(event, PIN_ENABLED_COOKIE, '1', { ...baseCookieOptions(event), httpOnly: false })
   setAttempts(event, 0)
 }
 
@@ -75,7 +78,7 @@ function getAttempts(event: H3Event): number {
 }
 
 function setAttempts(event: H3Event, n: number): void {
-  setCookie(event, PIN_ATTEMPTS_COOKIE, String(n), baseCookieOptions())
+  setCookie(event, PIN_ATTEMPTS_COOKIE, String(n), baseCookieOptions(event))
 }
 
 export interface PinVerifyResult {

@@ -5,6 +5,7 @@ interface ExpenseBody {
   expense_category?: string | null
   expense_description?: string | null
   expense_attachment?: string | null
+  branch?: string | null
 }
 
 export default defineEventHandler(async (event) => {
@@ -20,6 +21,7 @@ export default defineEventHandler(async (event) => {
       expense_category: body.expense_category?.trim() || null,
       expense_description: body.expense_description ?? null,
       expense_attachment: body.expense_attachment ?? null,
+      branch: body.branch ?? null,
     },
   })
   return { item }

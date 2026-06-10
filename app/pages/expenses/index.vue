@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Expense } from '~/types/expenses'
+import type { Branch } from '~/types/inventory'
 
 function ymd(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0')
@@ -20,9 +21,14 @@ const toDate = computed(() => {
   return end ? `${ymd(end)}T23:59:59` : undefined
 })
 
+const { data: branchData } = await useFetch<{ items: Branch[] }>('/api/inventory/branches')
+const branches = computed(() => branchData.value?.items ?? [])
+const branchOptions = computed(() => [{ id: '', shop_name: 'All branches' }, ...branches.value])
+const selectedBranch = ref<string>('')
+
 const { data, pending, refresh } = await useFetch<{ items: Expense[] }>('/api/expenses', {
-  query: { from: fromDate, to: toDate, category: selectedCategory },
-  watch: [fromDate, toDate, selectedCategory],
+  query: { from: fromDate, to: toDate, category: selectedCategory, branch: selectedBranch },
+  watch: [fromDate, toDate, selectedCategory, selectedBranch],
 })
 
 const categoryOptions = computed(() => [{ label: 'All categories', value: '' }, ...EXPENSE_CATEGORIES.map(c => ({ label: c, value: c }))])
@@ -35,6 +41,7 @@ interface Row {
   category: string
   description: string
   attachment: string | null
+  branchName: string
 }
 
 const rows = computed<Row[]>(() =>
@@ -46,6 +53,7 @@ const rows = computed<Row[]>(() =>
     category: e.expense_category ?? '—',
     description: e.expense_description ?? '',
     attachment: e.expense_attachment ?? null,
+    branchName: branches.value.find(b => b.id === e.branch)?.shop_name ?? '—',
   })),
 )
 
@@ -108,6 +116,10 @@ async function confirmDelete() {
         <label class="text-xs font-medium text-slate-500">Date range</label>
         <DatePicker v-model="range" selection-mode="range" :manual-input="false" date-format="yy-mm-dd" show-icon class="w-64" />
       </div>
+      <div v-if="branches.length > 1" class="space-y-1">
+        <label class="text-xs font-medium text-slate-500">Branch</label>
+        <Select v-model="selectedBranch" :options="branchOptions" option-label="shop_name" option-value="id" class="w-44" />
+      </div>
       <div class="space-y-1">
         <label class="text-xs font-medium text-slate-500">Category</label>
         <Select v-model="selectedCategory" :options="categoryOptions" option-label="label" option-value="value" class="w-48" />
@@ -146,6 +158,7 @@ async function confirmDelete() {
         <Column field="date" header="Date" sortable>
           <template #body="{ data: row }">{{ row.date ? formatDate(row.date) : '—' }}</template>
         </Column>
+        <Column field="branchName" header="Branch" sortable />
         <Column field="category" header="Category" sortable />
         <Column field="description" header="Description">
           <template #body="{ data: row }">{{ row.description || '—' }}</template>

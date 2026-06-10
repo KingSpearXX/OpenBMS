@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Expense } from '~/types/expenses'
+import type { Branch } from '~/types/inventory'
 
 const props = defineProps<{
   visible: boolean
@@ -16,10 +17,14 @@ const isEdit = computed(() => !!props.expense)
 const loading = ref(false)
 const error = ref('')
 
+const { data: branchData } = useFetch<{ items: Branch[] }>('/api/inventory/branches')
+const branches = computed(() => branchData.value?.items ?? [])
+
 const form = reactive({
   amount: null as number | null,
   category: null as string | null,
   description: '' as string,
+  branch: null as string | null,
 })
 const file = ref<File | null>(null)
 const existingAttachment = ref<string | null>(null)
@@ -34,6 +39,7 @@ watch(
     form.amount = e?.expense_amount != null ? Number(e.expense_amount) : null
     form.category = e?.expense_category ?? null
     form.description = e?.expense_description ?? ''
+    form.branch = e?.branch ?? null
     existingAttachment.value = e?.expense_attachment ?? null
   },
 )
@@ -64,6 +70,7 @@ async function save() {
       expense_category: form.category || null,
       expense_description: form.description || null,
       expense_attachment: attachment,
+      branch: form.branch || null,
     }
     if (isEdit.value && props.expense) await updateExpense(props.expense.id, body)
     else await createExpense(body)
@@ -99,6 +106,10 @@ async function save() {
           <label class="text-sm font-medium text-slate-700">Category</label>
           <Select v-model="form.category" :options="EXPENSE_CATEGORIES" editable show-clear placeholder="—" fluid />
         </div>
+      </div>
+      <div v-if="branches.length" class="space-y-1.5">
+        <label class="text-sm font-medium text-slate-700">Branch</label>
+        <Select v-model="form.branch" :options="branches" option-label="shop_name" option-value="id" show-clear placeholder="All branches" fluid />
       </div>
       <div class="space-y-1.5">
         <label class="text-sm font-medium text-slate-700">Description</label>

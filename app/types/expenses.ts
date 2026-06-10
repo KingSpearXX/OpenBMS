@@ -6,4 +6,5 @@ export interface Expense {
   expense_category: string | null
   expense_description: string | null
   expense_attachment: string | null
+  branch: string | null
 }

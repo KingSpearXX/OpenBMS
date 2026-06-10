@@ -14,16 +14,27 @@ export interface SessionData {
   remember: boolean
 }
 
-function secureCookies(): boolean {
-  // Relax on localhost dev (http) so the cookie is actually stored.
-  return !import.meta.dev
+// Deduplicates concurrent token-refresh calls that arrive within the same expiry window.
+// Directus refresh tokens are single-use; a second parallel refresh with the same token
+// would fail, causing clearAuthSession and an unexpected logout.
+interface RefreshResult { accessToken: string; refreshToken: string; expiresAt: number }
+const refreshing = new Map<string, Promise<RefreshResult | null>>()
+
+// Only mark the cookie Secure when the request actually arrived over HTTPS.
+// Checking the protocol at runtime (rather than import.meta.dev) keeps the cookie
+// functional on HTTP-only self-hosted setups while still being Secure on HTTPS.
+function secureCookies(event: H3Event): boolean {
+  if (import.meta.dev) return false
+  const forwarded = getHeader(event, 'x-forwarded-proto')
+  if (forwarded) return forwarded.split(',')[0]!.trim() === 'https'
+  return getRequestURL(event).protocol === 'https:'
 }
 
 export function setAuthSession(event: H3Event, data: SessionData): void {
   const secret = useRuntimeConfig(event).sessionSecret
   setCookie(event, SESSION_COOKIE, encryptJson(data, secret), {
     httpOnly: true,
-    secure: secureCookies(),
+    secure: secureCookies(event),
     sameSite: 'lax',
     path: '/',
     ...(data.remember ? { maxAge: REMEMBER_MAX_AGE } : {}),
@@ -50,20 +61,30 @@ export async function getAccessToken(event: H3Event): Promise<string | null> {
   if (!session) return null
   if (Date.now() < session.expiresAt - EXPIRY_SKEW_MS) return session.accessToken
 
-  try {
-    const tokens = await directusRefresh(event, session.refreshToken)
-    setAuthSession(event, {
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresAt: Date.now() + tokens.expires,
-      remember: session.remember,
-    })
-    // Keep a device PIN (if set) usable across token rotations.
-    refreshPinToken(event, tokens.refresh_token)
-    return tokens.access_token
+  // Deduplicate: if another concurrent request is already refreshing this token, await it.
+  const key = session.refreshToken
+  let promise = refreshing.get(key)
+  if (!promise) {
+    promise = directusRefresh(event, session.refreshToken)
+      .then(tokens => ({
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt: Date.now() + tokens.expires,
+      }))
+      .catch(() => null)
+      .finally(() => refreshing.delete(key))
+    refreshing.set(key, promise)
   }
-  catch {
+
+  const result = await promise
+  if (!result) {
     clearAuthSession(event)
     return null
   }
+
+  // Each waiting request re-seals the new tokens into its own response cookie.
+  setAuthSession(event, { ...result, remember: session.remember })
+  // Keep a device PIN (if set) usable across token rotations.
+  refreshPinToken(event, result.refreshToken)
+  return result.accessToken
 }
