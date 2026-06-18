@@ -54,6 +54,9 @@ function editContact(c: Contact) {
 
 const { deleteContact, updateOrder } = useSales()
 
+// PDF documents
+const { openDocument } = useDocuments()
+
 // Quick status toggles on the orders table.
 const busyOrderId = ref<number | null>(null)
 async function setOrderStatus(order: Order, field: 'paid' | 'shipped' | 'completed', value: boolean) {
@@ -97,7 +100,8 @@ async function confirmDeleteContact() {
     <div v-else-if="customer" class="mt-3">
       <div class="flex flex-wrap items-center gap-3">
         <h1 class="text-xl font-semibold text-slate-900">{{ customer.partner_name || '(unnamed)' }}</h1>
-        <Button icon="pi pi-pencil" label="Edit" outlined size="small" class="ml-auto" @click="editVisible = true" />
+        <Button icon="pi pi-file-pdf" label="Statement" outlined size="small" class="ml-auto" @click="openDocument('customer-statement', id)" />
+        <Button icon="pi pi-pencil" label="Edit" outlined size="small" @click="editVisible = true" />
       </div>
 
       <dl class="mt-6 grid grid-cols-3 gap-y-4 rounded-lg border border-slate-200 bg-white p-5 text-sm">

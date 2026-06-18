@@ -38,6 +38,9 @@ const employeeName = computed(() => {
 
 const { updateOrder } = useSales()
 
+// PDF documents
+const { openDocument } = useDocuments()
+
 // Quick status toggles — patch immediately.
 const togglingStatus = ref(false)
 async function setStatus(field: 'paid' | 'shipped' | 'completed', value: boolean) {
@@ -103,7 +106,9 @@ async function confirmDeleteLine() {
     <div v-else-if="order" class="mt-3">
       <div class="flex flex-wrap items-center gap-3">
         <h1 class="text-xl font-semibold text-slate-900">Order #{{ order.id }}</h1>
-        <Button icon="pi pi-pencil" label="Edit" outlined size="small" class="ml-auto" @click="editVisible = true" />
+        <Button icon="pi pi-file-pdf" label="Invoice" outlined size="small" class="ml-auto" @click="openDocument('order-invoice', id)" />
+        <Button icon="pi pi-truck" label="Delivery receipt" outlined size="small" @click="openDocument('order-delivery-receipt', id)" />
+        <Button icon="pi pi-pencil" label="Edit" outlined size="small" @click="editVisible = true" />
       </div>
 
       <dl class="mt-6 grid grid-cols-3 gap-y-4 rounded-lg border border-slate-200 bg-white p-5 text-sm">

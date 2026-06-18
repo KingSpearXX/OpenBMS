@@ -47,6 +47,13 @@ export default defineNuxtConfig({
     pinSecret: process.env.NUXT_PIN_SECRET
       || process.env.NUXT_SESSION_SECRET
       || 'dev-insecure-pin-secret-change-me',
+    // External WeasyPrint PDF render API (server-only). Basic Auth creds are sent only
+    // when both are set, so the same code works whether or not the API enforces auth.
+    pdfRender: {
+      url: process.env.NUXT_PDF_RENDER_URL || 'https://pdf.rxedev.online',
+      username: process.env.NUXT_PDF_RENDER_USERNAME || '',
+      password: process.env.NUXT_PDF_RENDER_PASSWORD || '',
+    },
     public: {
       // App's public Directus base URL (non-secret). Runtime reads go through @directus/sdk.
       directusUrl: process.env.NUXT_PUBLIC_DIRECTUS_URL || 'https://directus.rxedev.online',
