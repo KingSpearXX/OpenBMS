@@ -14,8 +14,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const id = getRouterParam(event, 'id')
-  if (!id || !/^\d+$/.test(id)) {
-    throw createError({ statusCode: 400, statusMessage: 'A numeric record id is required.' })
+  if (!id) {
+    throw createError({ statusCode: 400, statusMessage: 'A record id is required.' })
   }
 
   const paramKey = PDF_TEMPLATES[template]

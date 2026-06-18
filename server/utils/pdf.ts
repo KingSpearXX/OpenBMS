@@ -7,6 +7,7 @@ export const PDF_TEMPLATES = {
   'customer-statement': 'CustomerId',
   'order-invoice': 'OrderId',
   'order-delivery-receipt': 'OrderId',
+  'quote': 'QuoteId',
 } as const
 
 export type PdfTemplate = keyof typeof PDF_TEMPLATES

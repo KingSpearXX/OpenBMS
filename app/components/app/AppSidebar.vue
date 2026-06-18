@@ -10,6 +10,7 @@ const nav = [
   { label: 'Products', icon: 'pi pi-tags', to: '/inventory/products' },
   { label: 'Stock usage', icon: 'pi pi-chart-line', to: '/inventory/usage' },
   { label: 'Customers', icon: 'pi pi-users', to: '/customers' },
+  { label: 'Quotes', icon: 'pi pi-file-edit', to: '/quotes' },
   { label: 'Point of Sale', icon: 'pi pi-shopping-bag', to: '/pos' },
   { label: 'Sales history', icon: 'pi pi-receipt', to: '/pos/history' },
   { label: 'Expenses', icon: 'pi pi-wallet', to: '/expenses' },

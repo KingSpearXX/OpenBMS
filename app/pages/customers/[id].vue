@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import type { Contact, Customer, Employee, Order } from '~/types/sales'
+import type { Quote } from '~/types/quotes'
 
 const route = useRoute()
 const id = Number(route.params.id)
 
 const { data, error, refresh } = await useFetch<{ item: Customer }>(`/api/customers/${id}`)
 const { data: ordersData, refresh: refreshOrders } = await useFetch<{ items: Order[] }>('/api/orders', { query: { customer: id } })
+const { data: quotesData, refresh: refreshQuotes } = await useFetch<{ items: Quote[] }>('/api/quotes', { query: { customer: id } })
 const { data: empData } = await useFetch<{ items: Employee[] }>('/api/orders/employees')
 
 const customer = computed(() => data.value?.item ?? null)
 const contacts = computed<Contact[]>(() => customer.value?.contact_entity ?? [])
 const orders = computed(() => ordersData.value?.items ?? [])
+const quotes = computed(() => quotesData.value?.items ?? [])
+
 const employees = computed(() => empData.value?.items ?? [])
 
 // Open vs completed filter for the orders table.
@@ -53,6 +57,13 @@ function editContact(c: Contact) {
 }
 
 const { deleteContact, updateOrder } = useSales()
+
+const statusSeverity: Record<string, string> = {
+  draft: 'secondary',
+  sent: 'info',
+  accepted: 'success',
+  expired: 'warn',
+}
 
 // PDF documents
 const { openDocument } = useDocuments()
@@ -206,6 +217,49 @@ async function confirmDeleteContact() {
           <Column header="Completed">
             <template #body="{ data: row }">
               <Checkbox :model-value="!!row.completed" binary :disabled="busyOrderId === row.id" @update:model-value="setOrderStatus(row, 'completed', $event)" />
+            </template>
+          </Column>
+        </DataTable>
+      </div>
+
+      <!-- Quotes -->
+      <div class="mt-8 flex flex-wrap items-center gap-2">
+        <h2 class="text-sm font-semibold text-slate-900">Quotes</h2>
+      </div>
+      <div class="mt-3 overflow-x-auto">
+        <DataTable
+          :value="quotes"
+          data-key="id"
+          striped-rows
+          paginator
+          :rows="5"
+          :rows-per-page-options="[5, 10, 25]"
+          :paginator-template="{
+            '640px': 'PrevPageLink CurrentPageReport NextPageLink',
+            '960px': 'FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink',
+            default: 'FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown',
+          }"
+          current-page-report-template="{currentPage} / {totalPages}"
+          :pt="{ table: { class: 'min-w-[34rem]' } }"
+        >
+          <template #empty><span class="text-sm text-slate-500">No quotes yet.</span></template>
+          <Column header="Quote">
+            <template #body="{ data: row }">
+              <NuxtLink :to="`/quotes/${row.id}`" class="text-slate-900 hover:underline">Quote</NuxtLink>
+            </template>
+          </Column>
+          <Column header="Date">
+            <template #body="{ data: row }">{{ row.quote_date ? formatDate(row.quote_date) : '—' }}</template>
+          </Column>
+          <Column header="Expires">
+            <template #body="{ data: row }">{{ row.expiration_date ? formatDate(row.expiration_date) : '—' }}</template>
+          </Column>
+          <Column header="Total">
+            <template #body="{ data: row }">{{ money(row.total) }}</template>
+          </Column>
+          <Column header="Status">
+            <template #body="{ data: row }">
+              <Tag :value="row.status" :severity="statusSeverity[row.status] ?? 'secondary'" />
             </template>
           </Column>
         </DataTable>
